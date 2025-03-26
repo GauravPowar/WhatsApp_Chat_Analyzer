@@ -38,8 +38,7 @@ class WhatsAppAnalyzer(QMainWindow):
         self.setCentralWidget(container)
 
     def loadFile(self):
-        options = QFileDialog.Options()
-        file_path, _ = QFileDialog.getOpenFileName(self, "Open WhatsApp Chat File", "", "Text Files (*.txt)", options=options)
+        file_path, _ = QFileDialog.getOpenFileName(self, "Open WhatsApp Chat File", "", "Text Files (*.txt)")
         if file_path:
             self.file_path = file_path
             self.generate_btn.setEnabled(True)
