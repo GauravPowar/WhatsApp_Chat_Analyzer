@@ -46,25 +46,37 @@ class WhatsAppAnalyzer(QMainWindow):
 
     def analyzeChat(self):
         chat_data = self.parseChat(self.file_path)
+
+        if chat_data.empty:
+            self.result_area.setText("⚠ Error: No valid messages found in the chat file!")
+            return
+
         stats = self.generateStats(chat_data)
         self.result_area.setText(stats)
         self.generateWordCloud(chat_data)
 
     def parseChat(self, file_path):
         messages = []
+        pattern = re.compile(r"^(\d{1,2}/\d{1,2}/\d{2,4}), (\d{1,2}:\d{2} (?:AM|PM)?) - (.*?): (.*)$")
+
         with open(file_path, "r", encoding="utf-8") as file:
             lines = file.readlines()
             for line in lines:
-                match = re.match(r"^(\d{1,2}/\d{1,2}/\d{2,4}), (\d{1,2}:\d{2} (?:AM|PM)?) - (.*?): (.*)$", line)
+                match = pattern.match(line.strip())
                 if match:
                     date, time, sender, message = match.groups()
                     messages.append((date, time, sender, message))
+
+        if not messages:
+            print("⚠ No valid messages extracted! Check chat format.")
+
         return pd.DataFrame(messages, columns=["Date", "Time", "Sender", "Message"])
 
     def generateStats(self, df):
         total_messages = len(df)
         users = df['Sender'].value_counts().to_dict()
         emoji_count = sum(1 for msg in df['Message'] if any(char in emoji.EMOJI_DATA for char in msg))
+
         stats = f"Total Messages: {total_messages}\n"
         stats += "Messages Per User:\n" + "\n".join([f"{user}: {count}" for user, count in users.items()])
         stats += f"\nTotal Emojis Used: {emoji_count}"
@@ -72,7 +84,13 @@ class WhatsAppAnalyzer(QMainWindow):
 
     def generateWordCloud(self, df):
         text = " ".join(df['Message'].dropna())
+
+        if not text.strip():
+            self.result_area.append("\n⚠ No valid words found for word cloud!")
+            return
+
         wordcloud = WordCloud(width=800, height=400, background_color='white').generate(text)
+        
         plt.figure(figsize=(10, 5))
         plt.imshow(wordcloud, interpolation='bilinear')
         plt.axis("off")
