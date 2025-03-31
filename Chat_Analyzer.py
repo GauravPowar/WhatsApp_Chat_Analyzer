@@ -57,15 +57,35 @@ class WhatsAppAnalyzer(QMainWindow):
 
     def parseChat(self, file_path):
         messages = []
-        pattern = re.compile(r"^(\d{1,2}/\d{1,2}/\d{2,4}), (\d{1,2}:\d{2} (?:AM|PM)?) - (.*?): (.*)$")
+        pattern = re.compile(r"^(\d{2}/\d{2}/\d{4}), (\d{2}:\d{2}) - (.*?): (.*)$")
 
         with open(file_path, "r", encoding="utf-8") as file:
             lines = file.readlines()
+            current_date, current_time, current_sender, current_message = None, None, None, []
+
             for line in lines:
-                match = pattern.match(line.strip())
+                line = line.strip()
+
+                if "Messages and calls are end-to-end encrypted" in line:
+                    continue  # Skip system messages
+
+                match = pattern.match(line)
+
                 if match:
-                    date, time, sender, message = match.groups()
-                    messages.append((date, time, sender, message))
+                    if current_date and current_sender:
+                        messages.append((current_date, current_time, current_sender, " ".join(current_message)))
+                    
+                    current_date, current_time, current_sender, message = match.groups()
+
+                    if "<Media omitted>" not in message:  # Ignore media messages
+                        current_message = [message]
+                    else:
+                        current_message = []
+                elif current_sender:
+                    current_message.append(line)  # Append multi-line messages
+            
+        if current_date and current_sender and current_message:
+            messages.append((current_date, current_time, current_sender, " ".join(current_message)))
 
         if not messages:
             print("⚠ No valid messages extracted! Check chat format.")
