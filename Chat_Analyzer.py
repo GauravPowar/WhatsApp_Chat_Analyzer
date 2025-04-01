@@ -26,5 +26,3 @@ def parseChat(self, file_path):
         print("⚠ No valid messages extracted! Check chat format.")
 
     return pd.DataFrame(messages, columns=["Date", "Time", "Sender", "Message"])
-PS C:\Users\powar\Documents\VS Code>  c:; cd 'c:\Users\powar\Documents\VS Code'; & 'c:\Program Files\Python313\python.exe' 'c:\Users\powar\.vscode\extensions\ms-python.debugpy-2025.4.1-win32-x64\bundled\libs\debugpy\launcher' '65071' '--' 'C:\Users\powar\Documents\VS Code\import sys.py' 
-Backend qtagg is interactive backend. Turning interactive mode on.
