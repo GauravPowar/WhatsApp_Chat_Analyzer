@@ -1,93 +1,123 @@
 import sys
 import re
-from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QFileDialog, QLabel, QTextEdit
-from PyQt6.QtGui import QPixmap
-from wordcloud import WordCloud
+import pandas as pd
+import emoji
 import matplotlib.pyplot as plt
-import os
+from wordcloud import WordCloud
+from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QPushButton, QLabel, QTextEdit, QVBoxLayout, QWidget
 
-class WhatsAppChatAnalyzer(QWidget):
+class WhatsAppAnalyzer(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.initUI()
 
+    def initUI(self):
         self.setWindowTitle("WhatsApp Chat Analyzer")
-        self.setGeometry(100, 100, 600, 500)
+        self.setGeometry(100, 100, 600, 400)
 
-        # Layout
-        self.layout = QVBoxLayout()
-
-        # File selection button
-        self.fileButton = QPushButton("Load Chat File")
-        self.fileButton.clicked.connect(self.loadFile)
-        self.layout.addWidget(self.fileButton)
-
-        # Label to show loaded file name
-        self.fileLabel = QLabel("No file selected")
-        self.layout.addWidget(self.fileLabel)
-
-        # Display area for chat preview
-        self.chatPreview = QTextEdit()
-        self.chatPreview.setReadOnly(True)
-        self.layout.addWidget(self.chatPreview)
-
-        # Analyze button
-        self.analyzeButton = QPushButton("Analyze Chat")
-        self.analyzeButton.clicked.connect(self.analyzeChat)
-        self.layout.addWidget(self.analyzeButton)
-
-        # WordCloud display
-        self.wordCloudLabel = QLabel()
-        self.layout.addWidget(self.wordCloudLabel)
-
-        self.setLayout(self.layout)
+        layout = QVBoxLayout()
+        
+        self.label = QLabel("Upload a WhatsApp chat file (.txt)")
+        layout.addWidget(self.label)
+        
+        self.upload_btn = QPushButton("Upload Chat File")
+        self.upload_btn.clicked.connect(self.loadFile)
+        layout.addWidget(self.upload_btn)
+        
+        self.result_area = QTextEdit()
+        self.result_area.setReadOnly(True)
+        layout.addWidget(self.result_area)
+        
+        self.generate_btn = QPushButton("Generate Insights")
+        self.generate_btn.clicked.connect(self.analyzeChat)
+        self.generate_btn.setEnabled(False)
+        layout.addWidget(self.generate_btn)
+        
+        container = QWidget()
+        container.setLayout(layout)
+        self.setCentralWidget(container)
 
     def loadFile(self):
-        filePath, _ = QFileDialog.getOpenFileName(self, "Open WhatsApp Chat", "", "Text Files (*.txt)")
-        if filePath:
-            self.fileLabel.setText(f"Loaded: {os.path.basename(filePath)}")
-            with open(filePath, "r", encoding="utf-8") as file:
-                self.chatData = file.readlines()
-            preview_text = "".join(self.chatData[:10])  # Show first 10 lines as preview
-            self.chatPreview.setText(preview_text)
+        file_path, _ = QFileDialog.getOpenFileName(self, "Open WhatsApp Chat File", "", "Text Files (*.txt)")
+        if file_path:
+            self.file_path = file_path
+            self.generate_btn.setEnabled(True)
+            self.label.setText(f"Loaded: {file_path}")
 
     def analyzeChat(self):
-        if not hasattr(self, "chatData"):
-            self.fileLabel.setText("⚠ No file loaded! Please load a chat file first.")
-            return
-        
-        # Extract messages from chat
-        chat_text = self.extractMessages(self.chatData)
+        chat_data = self.parseChat(self.file_path)
 
-        if not chat_text.strip():
-            self.fileLabel.setText("⚠ Error: No valid messages found in the chat file!")
+        if chat_data.empty:
+            self.result_area.setText("⚠ Error: No valid messages found in the chat file!")
             return
 
-        # Generate WordCloud
-        self.generateWordCloud(chat_text)
+        stats = self.generateStats(chat_data)
+        self.result_area.setText(stats)
+        self.generateWordCloud(chat_data)
 
-    def extractMessages(self, chat_lines):
-        """ Extracts actual messages from the WhatsApp chat """
-        message_pattern = re.compile(r"^\[\d{1,2}/\d{1,2}/\d{2,4}, \d{1,2}:\d{2}(:\d{2})? (AM|PM)?\] .*?: (.*)")
-        messages = [match.group(3) for line in chat_lines if (match := message_pattern.match(line))]
-        return " ".join(messages)
+    def parseChat(self, file_path):
+        messages = []
+        pattern = re.compile(r"^(\d{2}/\d{2}/\d{4}), (\d{2}:\d{2}) - (.*?): (.*)$")
 
-    def generateWordCloud(self, text):
-        wordcloud = WordCloud(width=800, height=400, background_color="white").generate(text)
+        with open(file_path, "r", encoding="utf-8") as file:
+            lines = file.readlines()
+            current_date, current_time, current_sender, current_message = None, None, None, []
+
+            for line in lines:
+                line = line.strip()
+
+                if "Messages and calls are end-to-end encrypted" in line:
+                    continue  # Skip system messages
+
+                match = pattern.match(line)
+
+                if match:
+                    if current_date and current_sender:
+                        messages.append((current_date, current_time, current_sender, " ".join(current_message)))
+                    
+                    current_date, current_time, current_sender, message = match.groups()
+
+                    if "<Media omitted>" not in message:  # Ignore media messages
+                        current_message = [message]
+                    else:
+                        current_message = []
+                elif current_sender:
+                    current_message.append(line)  # Append multi-line messages
+            
+        if current_date and current_sender and current_message:
+            messages.append((current_date, current_time, current_sender, " ".join(current_message)))
+
+        if not messages:
+            print("⚠ No valid messages extracted! Check chat format.")
+
+        return pd.DataFrame(messages, columns=["Date", "Time", "Sender", "Message"])
+
+    def generateStats(self, df):
+        total_messages = len(df)
+        users = df['Sender'].value_counts().to_dict()
+        emoji_count = sum(1 for msg in df['Message'] if any(char in emoji.EMOJI_DATA for char in msg))
+
+        stats = f"Total Messages: {total_messages}\n"
+        stats += "Messages Per User:\n" + "\n".join([f"{user}: {count}" for user, count in users.items()])
+        stats += f"\nTotal Emojis Used: {emoji_count}"
+        return stats
+
+    def generateWordCloud(self, df):
+        text = " ".join(df['Message'].dropna())
+
+        if not text.strip():
+            self.result_area.append("\n⚠ No valid words found for word cloud!")
+            return
+
+        wordcloud = WordCloud(width=800, height=400, background_color='white').generate(text)
         
         plt.figure(figsize=(10, 5))
-        plt.imshow(wordcloud, interpolation="bilinear")
+        plt.imshow(wordcloud, interpolation='bilinear')
         plt.axis("off")
-
-        # Save wordcloud image
-        wordcloud_path = "wordcloud.png"
-        plt.savefig(wordcloud_path)
-        plt.close()
-
-        # Display in PyQt Label
-        self.wordCloudLabel.setPixmap(QPixmap(wordcloud_path))
+        plt.show()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = WhatsAppChatAnalyzer()
+    window = WhatsAppAnalyzer()
     window.show()
     sys.exit(app.exec())
