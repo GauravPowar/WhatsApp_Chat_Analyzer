@@ -106,7 +106,7 @@ class WhatsAppAnalyzer(QMainWindow):
         text = " ".join(df['Message'].dropna())
 
         if not text.strip():
-            self.result_area.append("\n⚠ No valid words found for word cloud!")
+            self.result_area.append("\nError: No valid words found for word cloud!")
             return
 
         wordcloud = WordCloud(width=800, height=400, background_color='white').generate(text)
