@@ -88,7 +88,7 @@ class WhatsAppAnalyzer(QMainWindow):
             messages.append((current_date, current_time, current_sender, " ".join(current_message)))
 
         if not messages:
-            print("⚠ No valid messages extracted! Check chat format.")
+            print("Error: No valid messages extracted! Check chat format.")
 
         return pd.DataFrame(messages, columns=["Date", "Time", "Sender", "Message"])
 
