@@ -48,7 +48,7 @@ class WhatsAppAnalyzer(QMainWindow):
         chat_data = self.parseChat(self.file_path)
 
         if chat_data.empty:
-            self.result_area.setText("⚠ Error: No valid messages found in the chat file!")
+            self.result_area.setText("Error: Error: No valid messages found in the chat file!")
             return
 
         stats = self.generateStats(chat_data)
