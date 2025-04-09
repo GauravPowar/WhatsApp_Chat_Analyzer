@@ -48,7 +48,7 @@ class WhatsAppAnalyzer(QMainWindow):
         chat_data = self.parseChat(self.file_path)
 
         if chat_data.empty:
-            self.result_area.setText("Error: Error: No valid messages found in the chat file!")
+            self.result_area.setText("⚠ Error: No valid messages found in the chat file!")
             return
 
         stats = self.generateStats(chat_data)
@@ -88,7 +88,7 @@ class WhatsAppAnalyzer(QMainWindow):
             messages.append((current_date, current_time, current_sender, " ".join(current_message)))
 
         if not messages:
-            print("Error: No valid messages extracted! Check chat format.")
+            print("⚠ No valid messages extracted! Check chat format.")
 
         return pd.DataFrame(messages, columns=["Date", "Time", "Sender", "Message"])
 
@@ -106,7 +106,7 @@ class WhatsAppAnalyzer(QMainWindow):
         text = " ".join(df['Message'].dropna())
 
         if not text.strip():
-            self.result_area.append("\nError: No valid words found for word cloud!")
+            self.result_area.append("\n⚠ No valid words found for word cloud!")
             return
 
         wordcloud = WordCloud(width=800, height=400, background_color='white').generate(text)
@@ -118,6 +118,6 @@ class WhatsAppAnalyzer(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = WhatsApp_Chat_Analyzer()
+    window = WhatsAppAnalyzer()
     window.show()
     sys.exit(app.exec())
