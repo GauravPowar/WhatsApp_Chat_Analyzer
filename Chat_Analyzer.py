@@ -118,6 +118,6 @@ class WhatsAppAnalyzer(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = WhatsApp_Analyzer()
+    window = WhatsApp_Chat_Analyzer()
     window.show()
     sys.exit(app.exec())
