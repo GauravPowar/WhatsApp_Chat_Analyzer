@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from wordcloud import WordCloud
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QPushButton, QLabel, QTextEdit, QVBoxLayout, QWidget
 
-class WhatsAppAnalyzer(QMainWindow):
+class WhatsApp_Chat_Analyzer(QMainWindow):
     def __init__(self):
         super().__init__()
         self.initUI()
