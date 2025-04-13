@@ -20,7 +20,7 @@ pip install pandas emoji matplotlib wordcloud PyQt6
 1. Clone the repository:
 ```sh
 git clone https://github.com/GauravPowar/WhatsApp_Chat_Analyzer.git
-cd WhatsApp_Chat_Analyzer
+cd Chat_Analyzer
 ```
 2. Run the script:
 ```sh
