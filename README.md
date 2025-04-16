@@ -48,5 +48,4 @@ Feel free to submit issues or pull requests to improve the project!
 ## Repository
 GitHub: [WhatsApp Chat Analyzer](https://github.com/GauravPowar/WhatsApp_Chat_Analyzer/)
 
-## Author
-Gaurav Powar
+## Created With Love (and countless bug fixes) By Gaurav
