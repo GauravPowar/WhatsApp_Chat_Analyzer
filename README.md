@@ -40,7 +40,7 @@ python Chat_Analyzer.py
 - Ensure the chat format follows **WhatsApp's standard export format**.
 
 ## License
-This project is licensed under the MIT License.
+This project is licensed under the *MIT License*.
 
 ## Contributions
 Feel free to submit issues or pull requests to improve the project!
