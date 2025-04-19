@@ -19,18 +19,16 @@ class WhatsAppChatAnalyzer(QMainWindow):
     def init_ui(self):
         """Initialize the user interface."""
         self.setWindowTitle("WhatsApp Chat Analyzer")
-        self.setGeometry(100, 100, 800, 600)  # Larger window for better visibility
+        self.setGeometry(100, 100, 800, 600)
         
         layout = QVBoxLayout()
         layout.setSpacing(15)
         
-        # Header label with styling
         self.label = QLabel("Upload a WhatsApp chat file (.txt)")
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.label.setStyleSheet("font-weight: bold; font-size: 16px;")
         layout.addWidget(self.label)
         
-        # Upload button with styling
         self.upload_btn = QPushButton("Upload Chat File")
         self.upload_btn.setStyleSheet("""
             QPushButton {
@@ -47,7 +45,6 @@ class WhatsAppChatAnalyzer(QMainWindow):
         self.upload_btn.clicked.connect(self.load_file)
         layout.addWidget(self.upload_btn)
         
-        # Result area with improved styling
         self.result_area = QTextEdit()
         self.result_area.setReadOnly(True)
         self.result_area.setStyleSheet("""
@@ -60,7 +57,6 @@ class WhatsAppChatAnalyzer(QMainWindow):
         """)
         layout.addWidget(self.result_area)
         
-        # Generate button with styling
         self.generate_btn = QPushButton("Generate Insights")
         self.generate_btn.setStyleSheet("""
             QPushButton {
@@ -122,7 +118,7 @@ class WhatsAppChatAnalyzer(QMainWindow):
     def parse_chat(self, file_path):
         """Parse the WhatsApp chat file into a structured DataFrame."""
         messages = []
-        # Improved regex pattern to handle different date formats and edge cases
+        media_messages = []
         pattern = re.compile(
             r"^(\[?(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\]?,?\s?\[?(\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AP]M)?)\]?\s?[-\]]\s?(.*?):\s?(.*))$",
             re.IGNORECASE
@@ -141,74 +137,97 @@ class WhatsAppChatAnalyzer(QMainWindow):
                     if current_message and current_message[3]:  # If we have a previous message
                         messages.append(current_message)
                     
-                    # Reconstruct the matched groups
                     full_match, date, time, sender, message = match.groups()
-                    if "<Media omitted>" not in message:
-                        current_message = [date, time, sender, message]
-                    else:
+                    if "<Media omitted>" in message:
+                        media_messages.append([date, time, sender, "Media"])
                         current_message = [date, time, sender, ""]
+                    else:
+                        current_message = [date, time, sender, message]
                 elif current_message:
-                    # Handle multi-line messages
-                    if current_message[3]:  # If there's existing message content
+                    if current_message[3]:
                         current_message[3] += " " + line
                     else:
                         current_message[3] = line
         
-        if current_message and current_message[3]:  # Add the last message
+        if current_message and current_message[3]:
             messages.append(current_message)
             
-        if not messages:
+        # Combine regular messages and media messages
+        all_messages = messages + media_messages
+        if not all_messages:
             print("⚠ No valid messages extracted! Check chat format.")
             return pd.DataFrame()
             
-        return pd.DataFrame(messages, columns=["Date", "Time", "Sender", "Message"])
+        return pd.DataFrame(all_messages, columns=["Date", "Time", "Sender", "Message"])
     
     def generate_stats(self, df):
-        """Generate statistics from the chat data."""
+        """Generate statistics from the chat data including media counts."""
         total_messages = len(df)
-        users = df['Sender'].value_counts().to_dict()
         
-        # Calculate emoji usage more efficiently
+        # Calculate regular messages vs media messages
+        media_messages = df[df['Message'] == 'Media']
+        regular_messages = df[df['Message'] != 'Media']
+        media_count = len(media_messages)
+        
+        # User-specific stats
+        user_stats = defaultdict(lambda: {'total': 0, 'media': 0, 'text': 0})
+        
+        for _, row in df.iterrows():
+            user = row['Sender']
+            user_stats[user]['total'] += 1
+            if row['Message'] == 'Media':
+                user_stats[user]['media'] += 1
+            else:
+                user_stats[user]['text'] += 1
+        
+        # Emoji count (only for text messages)
         emoji_count = sum(
             char in emoji.EMOJI_DATA 
-            for msg in df['Message'].dropna() 
+            for msg in regular_messages['Message'].dropna() 
             for char in msg
         )
         
-        # Calculate words per message
-        word_counts = df['Message'].str.split().str.len()
+        # Words per message (only for text messages)
+        word_counts = regular_messages['Message'].str.split().str.len()
         avg_words = word_counts.mean()
         
-        # Calculate active hours
+        # Active hours
         df['Hour'] = pd.to_datetime(df['Time']).dt.hour
         active_hours = df['Hour'].value_counts().sort_index()
         
         # Format statistics
         stats = f"📊 Chat Analysis Report\n{'='*40}\n"
         stats += f"📝 Total Messages: {total_messages:,}\n"
-        stats += f"📋 Average Words per Message: {avg_words:.1f}\n"
+        stats += f"📷 Media Files Shared: {media_count:,} ({media_count/total_messages:.1%})\n"
+        stats += f"📋 Text Messages: {len(regular_messages):,}\n"
+        stats += f"📊 Average Words per Text Message: {avg_words:.1f}\n"
         stats += f"😊 Total Emojis Used: {emoji_count:,}\n\n"
         
-        stats += "👥 Messages Per User:\n"
-        stats += "\n".join([f"  • {user}: {count:,} ({count/total_messages:.1%})" 
-                          for user, count in users.items()])
+        stats += "👥 User Statistics:\n"
+        for user, counts in sorted(user_stats.items(), key=lambda x: x[1]['total'], reverse=True):
+            stats += (
+                f"  • {user}:\n"
+                f"    📌 Total: {counts['total']:,}\n"
+                f"    ✏️ Text: {counts['text']:,} ({counts['text']/counts['total']:.1%})\n"
+                f"    🖼️ Media: {counts['media']:,} ({counts['media']/counts['total']:.1%})\n"
+            )
         
-        stats += "\n\n🕒 Most Active Hours:\n"
+        stats += "\n🕒 Most Active Hours:\n"
         stats += "\n".join([f"  • {hour:02d}:00 - {count:,} messages" 
-                          for hour, count in active_hours.items()][:5])
+                          for hour, count in active_hours.head(5).items()])
         
         return stats
     
     def generate_word_cloud(self, df):
-        """Generate and display a word cloud from the chat messages."""
-        text = " ".join(msg for msg in df['Message'].dropna() if msg.strip())
+        """Generate and display a word cloud from text messages only."""
+        text_messages = df[df['Message'] != 'Media']
+        text = " ".join(msg for msg in text_messages['Message'].dropna() if msg.strip())
         
         if not text.strip():
             self.result_area.append("\n⚠ No valid words found for word cloud!")
             return
             
         try:
-            # Improved word cloud with stopwords and better styling
             wordcloud = WordCloud(
                 width=1200,
                 height=600,
@@ -221,7 +240,7 @@ class WhatsAppChatAnalyzer(QMainWindow):
             plt.figure(figsize=(12, 6))
             plt.imshow(wordcloud, interpolation='bilinear')
             plt.axis("off")
-            plt.title("Word Cloud of Chat Messages", pad=20)
+            plt.title("Word Cloud of Text Messages", pad=20)
             plt.tight_layout()
             plt.show()
             
@@ -231,9 +250,8 @@ class WhatsAppChatAnalyzer(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    app.setStyle('Fusion')  # Modern style
+    app.setStyle('Fusion')
     
-    # Set a custom font for better readability
     font = app.font()
     font.setPointSize(10)
     app.setFont(font)
