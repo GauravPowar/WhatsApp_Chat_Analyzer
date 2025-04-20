@@ -17,7 +17,7 @@ class WhatsAppChatAnalyzer(QMainWindow):
         self.init_ui()
         
     def init_ui(self):
-        """Initialize the user interface."""
+        """Initialize the UI."""
         self.setWindowTitle("WhatsApp Chat Analyzer")
         self.setGeometry(100, 100, 800, 600)
         
