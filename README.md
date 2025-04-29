@@ -38,6 +38,7 @@ python Chat_Analyzer.py
 ## Notes
 - The tool **ignores media messages** (`<Media omitted>`) and system messages (`Messages and calls are end-to-end encrypted`).
 - Ensure the chat format follows **WhatsApp's standard export format**.
+- Ensure that you don't violate any of **WhatsApp's Privacy Policy**.
 
 ## License
 This project is licensed under the *MIT License*.
